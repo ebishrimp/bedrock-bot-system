@@ -41,12 +41,16 @@ class CommandRegistry {
   }
 
   /**
-   * Send a response message to the game via /say
+   * Send a response message to the game via chat
    * @param {string} message - Message to send
    */
   async respondToPlayer(message) {
     if (this.botClient && this.botClient.queue) {
-      this.botClient.queue.addChatAction(message);
+      // Send message via chat packet
+      this.botClient.queue('chat', {
+        message: message,
+        type: 'system'
+      });
     }
   }
 
