@@ -1,8 +1,4 @@
 {
-  "account": {
-    "email": "your-microsoft-account@example.com",
-    "password": "your-password"
-  },
   "server": {
     "host": "127.0.0.1",
     "port": 19132
