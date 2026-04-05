@@ -3,7 +3,7 @@ const path = require('path');
 const { createClient } = require('bedrock-protocol');
 const { CommandParser } = require('./commandParser');
 const { CommandRegistry } = require('./commandRegistry');
-const { loadCachedAuth, saveAuth, isAuthValid } = require('./auth');
+const { saveAuth } = require('./auth');
 
 const settingsPath = path.resolve(__dirname, '..', 'settings.json');
 const configPath = path.resolve(__dirname, 'config.json');
@@ -18,8 +18,14 @@ if (!fs.existsSync(settingsPath)) {
 const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
+const authCacheFolder = path.resolve(__dirname, '..', '.auth-cache');
+if (!fs.existsSync(authCacheFolder)) {
+  fs.mkdirSync(authCacheFolder, { recursive: true });
+}
+
 console.log('[mcbebot] Starting...');
 console.log('[mcbebot] Server:', `${settings.server.host}:${settings.server.port}`);
+console.log('[mcbebot] Auth cache:', authCacheFolder);
 
 let client = null;
 let commandRegistry = null;
@@ -27,22 +33,14 @@ let botUsername = null;
 
 async function start() {
   try {
-    // Try to load cached auth first
-    let authData = loadCachedAuth();
-    
     console.log('[mcbebot] Connecting to server...');
     
     const clientOptions = {
       host: settings.server.host,
       port: settings.server.port,
-      offline: false  // Enable online mode authentication
+      offline: false, // Enable online mode authentication
+      profilesFolder: authCacheFolder
     };
-
-    // If we have cached auth, use it; otherwise bedrock-protocol will prompt for auth
-    if (authData && isAuthValid(authData)) {
-      console.log('[mcbebot] Using cached authentication');
-      clientOptions.authTitle = 'Bedrock';
-    }
 
     client = createClient(clientOptions);
     commandRegistry = new CommandRegistry(client);
