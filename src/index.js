@@ -38,8 +38,8 @@ async function start() {
     const clientOptions = {
       host: settings.server.host,
       port: settings.server.port,
-      offline: false, // Enable online mode authentication
-      profilesFolder: authCacheFolder
+      offline: true, // Server is in offline mode, skip authentication
+      username: 'CommandBot'
     };
 
     client = createClient(clientOptions);
