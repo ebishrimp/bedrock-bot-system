@@ -45,12 +45,20 @@ class CommandRegistry {
    * @param {string} message - Message to send
    */
   async respondToPlayer(message) {
-    if (this.botClient && this.botClient.queue) {
-      // Send message via chat packet
-      this.botClient.queue('chat', {
-        message: message,
-        type: 'system'
-      });
+    if (this.botClient) {
+      try {
+        // Send text message packet
+        this.botClient.write('text', {
+          type: 'chat', // type: chat, raw, tip, system, etc.
+          needs_translation: false,
+          source_name: this.botClient.profile?.name || 'Bot',
+          xuid: '',
+          platform_chat_id: '',
+          message: message
+        });
+      } catch (error) {
+        console.error('[respondToPlayer] Failed to send message:', error);
+      }
     }
   }
 
