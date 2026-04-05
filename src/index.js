@@ -1,63 +1,62 @@
 const fs = require('fs');
 const path = require('path');
-const readline = require('readline');
-
-const { BotManager } = require('./botManager');
-const { CommandHandler } = require('./commandHandler');
+const { createClient } = require('bedrock-protocol');
+const { CommandParser } = require('./commandParser');
+const { CommandRegistry } = require('./commandRegistry');
 
 const configPath = path.resolve(__dirname, 'config.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-const botManager = new BotManager(config);
-const commandHandler = new CommandHandler(botManager, config.control);
+console.log('[mcbebot] Starting...');
+console.log('[mcbebot] Config:', JSON.stringify(config.server, null, 2));
 
-console.log('mcbebot starting with config', JSON.stringify(config.server, null, 2));
+let client = null;
+let commandRegistry = null;
 
-// Auto-login bots that should spawn immediately
-config.bots.forEach((b) => {
-  if (b.autoLogin) {
-    try {
-      botManager.login(b.name);
-    } catch (e) {
-      console.error(`autoLogin failed for ${b.name}:`, e.message);
-    }
+async function connectBot() {
+  try {
+    console.log('[mcbebot] Connecting to server...');
+    
+    client = createClient(config.server);
+    commandRegistry = new CommandRegistry(client);
+
+    client.on('connect', () => {
+      console.log('[mcbebot] Connected to server!');
+    });
+
+    client.on('spawn', () => {
+      console.log('[mcbebot] Bot spawned!');
+    });
+
+    client.on('text', async (packet) => {
+      // Ignore messages from the bot itself
+      if (packet.source_name === config.botName) {
+        return;
+      }
+
+      const message = packet.message;
+      console.log(`[CHAT] ${packet.source_name}: ${message}`);
+
+      // Parse command
+      const parsed = CommandParser.parse(message);
+      if (parsed) {
+        console.log(`[COMMAND] Executing: ${parsed.command}`, parsed.args);
+        await commandRegistry.execute(parsed.command, parsed.args, packet.source_name);
+      }
+    });
+
+    client.on('error', (error) => {
+      console.error('[mcbebot] Client error:', error);
+    });
+
+    client.on('close', () => {
+      console.log('[mcbebot] Disconnected from server');
+    });
+
+  } catch (error) {
+    console.error('[mcbebot] Connection failed:', error);
+    process.exit(1);
   }
-});
+}
 
-// Terminal input for local control
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: 'mcbebot> '
-});
-
-rl.prompt();
-rl.on('line', async (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) {
-    rl.prompt();
-    return;
-  }
-
-  if (trimmed === 'exit' || trimmed === 'quit') {
-    console.log('shutting down');
-    botManager.list().forEach((b) => botManager.logout(b.name));
-    process.exit(0);
-  }
-
-  if (trimmed === 'list') {
-    console.log(botManager.list());
-    rl.prompt();
-    return;
-  }
-
-  const result = await commandHandler.onChatMessage({ sender: 'console', message: trimmed });
-  if (result) console.log(result);
-
-  rl.prompt();
-});
-
-rl.on('close', () => {
-  console.log('stdin closed; exiting');
-  process.exit(0);
-});
+connectBot();
