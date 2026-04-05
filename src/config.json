@@ -2,21 +2,8 @@
   "server": {
     "host": "127.0.0.1",
     "port": 19132,
-    "onlineMode": false,
-    "maxBots": 10
+    "username": "CommandBot",
+    "onlineMode": false
   },
-  "control": {
-    "commandPrefix": "!bot",
-    "allowedPlayers": ["admin"]
-  },
-  "bots": [
-    {
-      "name": "bot1",
-      "xuid": "",
-      "skin": "", 
-      "initialPosition": {"x": 0, "y": 4, "z": 0},
-      "autoLogin": false,
-      "spawnOnStart": false
-    }
-  ]
+  "botName": "CommandBot"
 }
