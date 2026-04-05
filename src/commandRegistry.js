@@ -47,14 +47,9 @@ class CommandRegistry {
   async respondToPlayer(message) {
     if (this.botClient) {
       try {
-        // Use the exact format from the official documentation
+        // Use system message type for bot responses (like server messages)
         this.botClient.queue('text', {
-          type: 'chat',
-          needs_translation: false,
-          source_name: this.botClient.username || 'Bot',
-          xuid: '',
-          platform_chat_id: '',
-          filtered_message: '',
+          type: 'system',
           message: message
         });
       } catch (error) {
