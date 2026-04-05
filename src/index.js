@@ -3,15 +3,15 @@ const path = require('path');
 const { createClient } = require('bedrock-protocol');
 const { CommandParser } = require('./commandParser');
 const { CommandRegistry } = require('./commandRegistry');
-const { authenticate } = require('./auth');
+const { loadCachedAuth, saveAuth, isAuthValid } = require('./auth');
 
 const settingsPath = path.resolve(__dirname, '..', 'settings.json');
 const configPath = path.resolve(__dirname, 'config.json');
 
-// Load settings (credentials)
+// Load settings (server info)
 if (!fs.existsSync(settingsPath)) {
   console.error('[mcbebot] ERROR: settings.json not found!');
-  console.error('[mcbebot] Please copy settings.json.example to settings.json and fill in your Microsoft account.');
+  console.error('[mcbebot] Please copy settings.json.example to settings.json and update server settings.');
   process.exit(1);
 }
 
@@ -23,29 +23,28 @@ console.log('[mcbebot] Server:', `${settings.server.host}:${settings.server.port
 
 let client = null;
 let commandRegistry = null;
+let botUsername = null;
 
 async function start() {
   try {
-    // Authenticate with Microsoft
-    console.log('[mcbebot] Authenticating...');
-    const authData = await authenticate(settings.account.email, settings.account.password);
+    // Try to load cached auth first
+    let authData = loadCachedAuth();
     
     console.log('[mcbebot] Connecting to server...');
     
-    client = createClient({
+    const clientOptions = {
       host: settings.server.host,
       port: settings.server.port,
-      username: authData.username,
-      offline: false,
-      profile: {
-        name: authData.username,
-        xuid: '',
-        uuid: authData.uuid
-      },
-      // Use the Minecraft token for authentication
-      token: authData.minecraftToken
-    });
+      offline: false  // Enable online mode authentication
+    };
 
+    // If we have cached auth, use it; otherwise bedrock-protocol will prompt for auth
+    if (authData && isAuthValid(authData)) {
+      console.log('[mcbebot] Using cached authentication');
+      clientOptions.authTitle = 'Bedrock';
+    }
+
+    client = createClient(clientOptions);
     commandRegistry = new CommandRegistry(client);
 
     client.on('connect', () => {
@@ -53,12 +52,23 @@ async function start() {
     });
 
     client.on('spawn', () => {
-      console.log('[mcbebot] Bot spawned!');
+      // Get bot username from client profile
+      botUsername = client.profile?.name || 'Bot';
+      console.log(`[mcbebot] Bot spawned! Username: ${botUsername}`);
+      
+      // Save auth data for future use
+      if (client.profile) {
+        const authDataToSave = {
+          profile: client.profile,
+          timestamp: Date.now()
+        };
+        saveAuth(authDataToSave);
+      }
     });
 
     client.on('text', async (packet) => {
       // Ignore messages from the bot itself
-      if (packet.source_name === authData.username) {
+      if (packet.source_name === botUsername) {
         return;
       }
 
