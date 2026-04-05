@@ -47,13 +47,14 @@ class CommandRegistry {
   async respondToPlayer(message) {
     if (this.botClient) {
       try {
-        // Send text message packet
-        this.botClient.write('text', {
-          type: 'chat', // type: chat, raw, tip, system, etc.
+        // Use the exact format from the official documentation
+        this.botClient.queue('text', {
+          type: 'chat',
           needs_translation: false,
-          source_name: this.botClient.profile?.name || 'Bot',
+          source_name: this.botClient.username || 'Bot',
           xuid: '',
           platform_chat_id: '',
+          filtered_message: '',
           message: message
         });
       } catch (error) {
